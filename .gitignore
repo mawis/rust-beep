@@ -1,2 +1,5 @@
+*~
+*.rej
 /target
 **/*.rs.bk
+Cargo.lock

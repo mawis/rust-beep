@@ -1,0 +1,6 @@
+[submodule "libaxl"]
+	path = libaxl
+	url = https://github.com/ASPLes/libaxl.git
+[submodule "libvortex"]
+	path = libvortex
+	url = https://github.com/ASPLes/libvortex-1.1.git
