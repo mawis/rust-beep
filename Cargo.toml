@@ -2,8 +2,10 @@
 name = "rust-beep"
 version = "0.1.0"
 authors = ["Matthias Wimmer <m@tthias.eu>"]
+homepage = "https://github.com/mawis"
+license = "LGPL-2.1-only"
 
 [dependencies]
 
 [build-dependencies]
-autotools = "0.1"
+cmake = "0.1"
