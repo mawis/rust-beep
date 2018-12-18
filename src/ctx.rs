@@ -30,6 +30,10 @@ impl<'a> Context {
         }
     }
 
+    pub fn raw_handle(&self) -> *mut vtx::VortexCtx {
+        self.ctx
+    }
+
     pub fn log_enable(&self, log_state: LogLevel) {
         let mut level1 = 0;
         let mut level2 = 0;
