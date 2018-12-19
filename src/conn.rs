@@ -66,7 +66,7 @@ impl<'a> Connection {
             if ch.is_null() {
                 None
             } else {
-                Some(ch::Channel::for_raw(self, ch))
+                Some(ch::Channel::for_raw(ch))
             }
         }
     }
@@ -93,8 +93,32 @@ impl<'a> Connection {
                 Err(BeepError::ChannelCreationFailed)
             } else {
                 vtx::vortex_channel_create_wait_reply();
-                Ok(ch::Channel::for_raw(self, channel))
+                Ok(ch::Channel::for_raw(channel))
             }
+        }
+    }
+
+    pub fn get_host(&self) -> Result<String, BeepError> {
+        let host = unsafe { vtx::vortex_connection_get_host(self.conn) };
+
+        if host.is_null() {
+            Err(BeepError::StateError(String::from("host was null")))
+        } else {
+            let host = unsafe { CStr::from_ptr(host) };
+            let host = host.to_str()?;
+            Ok(String::from(host))
+        }
+    }
+
+    pub fn get_port(&self) -> Result<String, BeepError> {
+        let port = unsafe { vtx::vortex_connection_get_port(self.conn) };
+
+        if port.is_null() {
+            Err(BeepError::StateError(String::from("port was null")))
+        } else {
+            let port = unsafe { CStr::from_ptr(port) };
+            let port = port.to_str()?;
+            Ok(String::from(port))
         }
     }
 }

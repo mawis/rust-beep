@@ -1,8 +1,10 @@
 use super::*;
 
 use std::ffi::{CStr, CString};
+use std::mem;
 use std::os::raw;
 use std::ptr;
+use std::slice;
 
 pub struct Context {
     ctx: *mut vtx::VortexCtx,
@@ -12,6 +14,16 @@ pub struct Context {
 
 pub type OnAcceptConnection =
     fn(conn: conn::Connection) -> bool;
+pub type OnStartChannel =
+    fn(conn: conn::Connection,
+       ch_no: u32) -> bool;
+pub type OnCloseChannel =
+    fn(conn: conn::Connection,
+       ch_no: u32) -> bool;
+pub type OnFrameReceived =
+    fn(conn: conn::Connection,
+       ch: ch::Channel,
+       frame: &[u8]);
 
 unsafe extern "C" fn sasl_plain_validation(
     _conn: *mut vtx::VortexConnection,
@@ -32,15 +44,71 @@ unsafe extern "C" fn call_accept_handler(
     conn: *mut vtx::VortexConnection,
     user_data: vtx::axlPointer) -> vtx::axl_bool {
 
-    let handler = user_data as *mut OnAcceptConnection;
-
-    if handler.is_null() {
+    if user_data.is_null() {
         debug!("No OnAcceptConnection handler defined.");
     } else {
-        (*handler)(conn::Connection::for_raw(conn));
+        let handler: OnAcceptConnection = mem::transmute(user_data);
+        handler(conn::Connection::for_raw(conn));
     }
 
     1
+}
+
+unsafe extern "C" fn call_start_channel_handler(
+    channel_num: raw::c_int,
+    conn: *mut vtx::VortexConnection,
+    user_data: vtx::axlPointer) -> vtx::axl_bool {
+
+    if user_data.is_null() {
+        debug!("No OnStartChannel handler defined.");
+        1
+    } else {
+        let handler: OnStartChannel = mem::transmute(user_data);
+        if handler(conn::Connection::for_raw(conn), channel_num as u32) {
+            1
+        } else {
+            0
+        }
+    }
+}
+
+unsafe extern "C" fn call_close_channel_handler(
+    channel_num: raw::c_int,
+    conn: *mut vtx::VortexConnection,
+    user_data: vtx::axlPointer) -> vtx::axl_bool {
+
+    if user_data.is_null() {
+        debug!("No OnCloseChannel handler defined.");
+        1
+    } else {
+        let handler: OnCloseChannel = mem::transmute(user_data);
+        if handler(conn::Connection::for_raw(conn), channel_num as u32) {
+            1
+        } else {
+            0
+        }
+    }
+}
+
+unsafe extern "C" fn call_frame_received_handler(
+    channel: *mut vtx::VortexChannel,
+    conn: *mut vtx::VortexConnection,
+    frame: *mut vtx::VortexFrame,
+    user_data: vtx::axlPointer) {
+
+    if user_data.is_null() {
+        debug!("No OnCloseChannel handler defined.");
+    } else {
+        let size = vtx::vortex_frame_get_payload_size(frame) as usize;
+        let content = vtx::vortex_frame_get_payload(frame) as *const u8;
+        let frame = slice::from_raw_parts(content, size);
+        let handler: OnFrameReceived = mem::transmute(user_data);
+
+        handler(
+            conn::Connection::for_raw(conn),
+            ch::Channel::for_raw(channel),
+            frame)
+    }
 }
 
 impl<'a> Context {
@@ -196,8 +264,8 @@ impl<'a> Context {
     pub fn listen(
         &mut self,
         host: &'a str,
-        mut handler: OnAcceptConnection,
-    ) -> Result<conn::Connection, BeepError> {
+        handler: OnAcceptConnection,
+    ) -> Result<(), BeepError> {
 
         // init SASL
         if !self.sasl_initialized {
@@ -231,15 +299,37 @@ impl<'a> Context {
             vtx::vortex_listener_set_on_connection_accepted(
                 self.ctx,
                 Some(call_accept_handler),
-                &mut handler as *mut _ as *mut raw::c_void);
+                handler as *mut raw::c_void);
         }
 
-        Err(BeepError::ConnectionFailed(String::from("Not yet implemented")))
+        Ok(())
     }
 
     pub fn wait_listener(&self) {
         unsafe {
             vtx::vortex_listener_wait(self.ctx);
+        }
+    }
+
+    pub fn register_profile(
+        &mut self,
+        profile: &'a str,
+        on_start_channel: OnStartChannel,
+        on_close_channel: OnCloseChannel,
+        on_frame_received: OnFrameReceived) {
+
+        let profile = CString::new(profile).unwrap();
+
+        unsafe {
+            vtx::vortex_profiles_register(
+                self.ctx,
+                profile.as_ptr(),
+                Some(call_start_channel_handler),
+                on_start_channel as *mut raw::c_void,
+                Some(call_close_channel_handler),
+                on_close_channel as *mut raw::c_void,
+                Some(call_frame_received_handler),
+                on_frame_received as *mut raw::c_void);
         }
     }
 

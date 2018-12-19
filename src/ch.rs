@@ -9,7 +9,6 @@ pub struct Channel {
 
 impl<'a> Channel {
     pub fn for_raw(
-        _conn: &'a conn::Connection,
         channel: *mut vtx::VortexChannel,
     ) -> Channel {
         Channel { channel }

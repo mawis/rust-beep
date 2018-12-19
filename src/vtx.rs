@@ -1,3 +1,5 @@
+use std::os::raw;
+
 // Vortex types
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -50,14 +52,14 @@ pub type VortexTlsPostCheck =
     >;
 pub type VortexOnChannelCreated =
     ::std::option::Option<
-        unsafe extern "C" fn(channel_num: ::std::os::raw::c_int,
+        unsafe extern "C" fn(channel_num: raw::c_int,
                              channel: *mut VortexChannel,
                              conn: *mut VortexConnection,
                              user_data: axlPointer),
     >;
 pub type VortexOnCloseChannel =
     ::std::option::Option<
-        unsafe extern "C" fn(channel_num: ::std::os::raw::c_int,
+        unsafe extern "C" fn(channel_num: raw::c_int,
                              connection: *mut VortexConnection,
                              user_data: axlPointer)
                              -> axl_bool,
@@ -72,23 +74,30 @@ pub type VortexOnFrameReceived =
 pub type VortexSaslAuthPlain =
     ::std::option::Option<
         unsafe extern "C" fn(connection: *mut VortexConnection,
-                             auth_id: *const ::std::os::raw::c_char,
-                             authorization_id: *const ::std::os::raw::c_char,
-                             password: *const ::std::os::raw::c_char)
+                             auth_id: *const raw::c_char,
+                             authorization_id: *const raw::c_char,
+                             password: *const raw::c_char)
                              -> axl_bool,
     >;
 pub type VortexListenerReady =
     ::std::option::Option<
-        unsafe extern "C" fn(host: *mut ::std::os::raw::c_char,
-                             port: ::std::os::raw::c_int,
+        unsafe extern "C" fn(host: *mut raw::c_char,
+                             port: raw::c_int,
                              status: VortexStatus,
-                             message: *mut ::std::os::raw::c_char,
+                             message: *mut raw::c_char,
                              user_data: axlPointer),
     >;
 pub type VortexOnAcceptedConnection =
     ::std::option::Option<
         unsafe extern "C" fn(connection: *mut VortexConnection,
                              data: axlPointer)
+                             -> axl_bool,
+    >;
+pub type VortexOnStartChannel =
+    ::std::option::Option<
+        unsafe extern "C" fn(channel_num: raw::c_int,
+                             connection: *mut VortexConnection,
+                             user_data: axlPointer)
                              -> axl_bool,
     >;
 pub type VortexStatus = u32;
@@ -100,8 +109,8 @@ pub const SASL_PLAIN: &'static [u8; 32usize] =
     b"http://iana.org/beep/SASL/PLAIN\0";
 
 // AXL types
-pub type axl_bool = ::std::os::raw::c_int;
-pub type axlPointer = *mut ::std::os::raw::c_void;
+pub type axl_bool = raw::c_int;
+pub type axlPointer = *mut raw::c_void;
 pub type axlDestroyFunc =
     ::std::option::Option<unsafe extern "C" fn(ptr: axlPointer)>;
 
@@ -125,8 +134,8 @@ extern "C" {
 extern "C" {
     pub fn vortex_listener_new(
         ctx: *mut VortexCtx,
-        host: *const ::std::os::raw::c_char,
-        port: *const ::std::os::raw::c_char,
+        host: *const raw::c_char,
+        port: *const raw::c_char,
         on_ready: VortexListenerReady,
         user_data: axlPointer,
     ) -> *mut VortexConnection;
@@ -136,12 +145,25 @@ extern "C" {
     pub fn vortex_listener_wait(ctx: *mut VortexCtx);
 }
 
+extern "C" {
+    pub fn vortex_profiles_register(
+        ctx: *mut VortexCtx,
+        uri: *const raw::c_char,
+        start: VortexOnStartChannel,
+        start_user_data: axlPointer,
+        close: VortexOnCloseChannel,
+        close_user_data: axlPointer,
+        received: VortexOnFrameReceived,
+        received_user_data: axlPointer,
+    ) -> axl_bool;
+}
+
 // Connection handling
 extern "C" {
     pub fn vortex_connection_new(
         ctx: *mut VortexCtx,
-        host: *const ::std::os::raw::c_char,
-        port: *const ::std::os::raw::c_char,
+        host: *const raw::c_char,
+        port: *const raw::c_char,
         on_connected: VortexConnectionNew,
         user_data: axlPointer,
     ) -> *mut VortexConnection;
@@ -163,13 +185,13 @@ extern "C" {
 extern "C" {
     pub fn vortex_connection_get_message(
         connection: *mut VortexConnection,
-    ) -> *const ::std::os::raw::c_char;
+    ) -> *const raw::c_char;
 }
 
 extern "C" {
     pub fn vortex_connection_get_channel(
         connection: *mut VortexConnection,
-        channel_num: ::std::os::raw::c_int,
+        channel_num: raw::c_int,
     ) -> *mut VortexChannel;
 }
 
@@ -180,13 +202,23 @@ extern "C" {
         data: axlPointer,
     );
 }
+extern "C" {
+    pub fn vortex_connection_get_host(
+        connection: *mut VortexConnection,
+    ) -> *const ::std::os::raw::c_char;
+}
+extern "C" {
+    pub fn vortex_connection_get_port(
+        connection: *mut VortexConnection,
+    ) -> *const ::std::os::raw::c_char;
+}
 
 // Channel handling
 extern "C" {
     pub fn vortex_channel_new(
         connection: *mut VortexConnection,
-        channel_num: ::std::os::raw::c_int,
-        profile: *const ::std::os::raw::c_char,
+        channel_num: raw::c_int,
+        profile: *const raw::c_char,
         close: VortexOnCloseChannel,
         close_user_data: axlPointer,
         received: VortexOnFrameReceived,
@@ -203,10 +235,19 @@ extern "C" {
 extern "C" {
     pub fn vortex_channel_send_msg(
         channel: *mut VortexChannel,
-        message: *const ::std::os::raw::c_void,
+        message: *const raw::c_void,
         message_size: usize,
-        msg_no: *mut ::std::os::raw::c_int,
+        msg_no: *mut raw::c_int,
     ) -> axl_bool;
+}
+
+// Frames
+extern "C" {
+    pub fn vortex_frame_get_payload_size(frame: *mut VortexFrame) -> raw::c_int;
+}
+extern "C" {
+    pub fn vortex_frame_get_payload(frame: *mut VortexFrame)
+                                    -> *const raw::c_void;
 }
 
 // Logging
@@ -240,9 +281,9 @@ extern "C" {
 extern "C" {
     pub fn vortex_tls_start_negotiation_sync(
         connection: *mut VortexConnection,
-        serverName: *const ::std::os::raw::c_char,
+        serverName: *const raw::c_char,
         status: *mut VortexStatus,
-        status_message: *mut *mut ::std::os::raw::c_char,
+        status_message: *mut *mut raw::c_char,
     ) -> *mut VortexConnection;
 }
 
@@ -255,7 +296,7 @@ extern "C" {
     pub fn vortex_sasl_set_propertie(
         connection: *mut VortexConnection,
         prop: VortexSaslProperties,
-        value: *mut ::std::os::raw::c_char,
+        value: *mut raw::c_char,
         value_destroy: axlDestroyFunc,
     ) -> axl_bool;
 }
@@ -263,9 +304,9 @@ extern "C" {
 extern "C" {
     pub fn vortex_sasl_start_auth_sync(
         connection: *mut VortexConnection,
-        profile: *const ::std::os::raw::c_char,
+        profile: *const raw::c_char,
         status: *mut VortexStatus,
-        status_message: *mut *mut ::std::os::raw::c_char,
+        status_message: *mut *mut raw::c_char,
     );
 }
 
@@ -285,6 +326,6 @@ extern "C" {
 extern "C" {
     pub fn vortex_sasl_accept_negotiation(
         ctx: *mut VortexCtx,
-        mech: *const ::std::os::raw::c_char,
+        mech: *const raw::c_char,
     ) -> axl_bool;
 }
