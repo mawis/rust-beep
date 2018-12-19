@@ -16,7 +16,10 @@ impl<'a> Channel {
     }
 
     pub fn send_msg(&self, message: String) -> Result<(), BeepError> {
-        let message = message.as_bytes();
+        self.send_bytes(message.as_bytes())
+    }
+
+    pub fn send_bytes(&self, message: &[u8]) -> Result<(), BeepError> {
         unsafe {
             if vtx::vortex_channel_send_msg(
                 self.channel,
