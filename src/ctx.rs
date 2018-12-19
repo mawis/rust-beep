@@ -187,10 +187,10 @@ impl<'a> Context {
 
         if use_tls {
             let tls_connection = self.start_tls(server, connection)?;
-            Ok(conn::Connection::for_raw(self, tls_connection))
+            Ok(conn::Connection::for_raw(tls_connection))
         } else {
             warn!("WARNING: TLS layer is disabled");
-            Ok(conn::Connection::for_raw(self, connection))
+            Ok(conn::Connection::for_raw(connection))
         }
     }
 }

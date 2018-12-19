@@ -10,7 +10,6 @@ pub struct Connection {
 
 impl<'a> Connection {
     pub fn for_raw(
-        _ctx: &'a ctx::Context,
         conn: *mut vtx::VortexConnection,
     ) -> Connection {
         if conn.is_null() {
