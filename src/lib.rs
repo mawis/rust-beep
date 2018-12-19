@@ -8,7 +8,7 @@ pub mod settings;
 #[allow(non_camel_case_types, non_upper_case_globals, dead_code)]
 mod tls;
 #[allow(non_camel_case_types)]
-mod vtx;
+pub mod vtx;
 
 #[derive(Debug)]
 pub enum BeepError {
