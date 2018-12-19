@@ -130,6 +130,13 @@ extern "C" {
     ) -> *const ::std::os::raw::c_char;
 }
 
+extern "C" {
+    pub fn vortex_connection_get_channel(
+        connection: *mut VortexConnection,
+        channel_num: ::std::os::raw::c_int,
+    ) -> *mut VortexChannel;
+}
+
 // Channel handling
 extern "C" {
     pub fn vortex_channel_new(

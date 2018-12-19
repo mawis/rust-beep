@@ -59,6 +59,19 @@ impl<'a> Connection {
         }
     }
 
+    pub fn get_channel(&self, channel_no: u32) -> Option<ch::Channel> {
+        unsafe {
+            let ch = vtx::vortex_connection_get_channel(
+                self.conn,
+                channel_no as raw::c_int);
+            if ch.is_null() {
+                None
+            } else {
+                Some(ch::Channel::for_raw(self, ch))
+            }
+        }
+    }
+
     pub fn channel_new(
         &self,
         profile: &str,
@@ -86,3 +99,5 @@ impl<'a> Connection {
         }
     }
 }
+
+unsafe impl Send for Connection{}
