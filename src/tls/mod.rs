@@ -97,9 +97,9 @@ unsafe fn tls_check_hostname(
     ) as *const openssl::stack_st;
     if !subject_alt_name.is_null() {
         let number_of_subject_alt_names =
-            openssl::OPENSSL_sk_num(subject_alt_name);
+            openssl::sk_num(subject_alt_name);
         (0..number_of_subject_alt_names).for_each(|c| {
-            let entry = openssl::OPENSSL_sk_value(subject_alt_name, c) as
+            let entry = openssl::sk_value(subject_alt_name, c) as
                 *mut x509v3::GENERAL_NAME_st;
 
             // sanity check
@@ -285,7 +285,7 @@ pub extern "C" fn tls_create_ssl_context(
 
     // create context
     unsafe {
-        let ssl_ctx = openssl::SSL_CTX_new(openssl::TLS_client_method());
+        let ssl_ctx = openssl::SSL_CTX_new(openssl::TLSv1_client_method());
 
         let capath = (*settings).capath.unwrap_or("");
         let cacert = (*settings).cacert.unwrap_or("");
