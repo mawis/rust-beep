@@ -69,6 +69,28 @@ pub type VortexOnFrameReceived =
                              frame: *mut VortexFrame,
                              user_data: axlPointer),
     >;
+pub type VortexSaslAuthPlain =
+    ::std::option::Option<
+        unsafe extern "C" fn(connection: *mut VortexConnection,
+                             auth_id: *const ::std::os::raw::c_char,
+                             authorization_id: *const ::std::os::raw::c_char,
+                             password: *const ::std::os::raw::c_char)
+                             -> axl_bool,
+    >;
+pub type VortexListenerReady =
+    ::std::option::Option<
+        unsafe extern "C" fn(host: *mut ::std::os::raw::c_char,
+                             port: ::std::os::raw::c_int,
+                             status: VortexStatus,
+                             message: *mut ::std::os::raw::c_char,
+                             user_data: axlPointer),
+    >;
+pub type VortexOnAcceptedConnection =
+    ::std::option::Option<
+        unsafe extern "C" fn(connection: *mut VortexConnection,
+                             data: axlPointer)
+                             -> axl_bool,
+    >;
 pub type VortexStatus = u32;
 pub const STATUS_OK: VortexStatus = 2;
 pub type VortexSaslProperties = u32;
@@ -98,6 +120,20 @@ extern "C" {
 
 extern "C" {
     pub fn vortex_ctx_free(ctx: *mut VortexCtx);
+}
+
+extern "C" {
+    pub fn vortex_listener_new(
+        ctx: *mut VortexCtx,
+        host: *const ::std::os::raw::c_char,
+        port: *const ::std::os::raw::c_char,
+        on_ready: VortexListenerReady,
+        user_data: axlPointer,
+    ) -> *mut VortexConnection;
+}
+
+extern "C" {
+    pub fn vortex_listener_wait(ctx: *mut VortexCtx);
 }
 
 // Connection handling
@@ -135,6 +171,14 @@ extern "C" {
         connection: *mut VortexConnection,
         channel_num: ::std::os::raw::c_int,
     ) -> *mut VortexChannel;
+}
+
+extern "C" {
+    pub fn vortex_listener_set_on_connection_accepted(
+        ctx: *mut VortexCtx,
+        on_accepted: VortexOnAcceptedConnection,
+        data: axlPointer,
+    );
 }
 
 // Channel handling
@@ -228,5 +272,19 @@ extern "C" {
 extern "C" {
     pub fn vortex_sasl_is_authenticated(
         connection: *mut VortexConnection,
+    ) -> axl_bool;
+}
+
+extern "C" {
+    pub fn vortex_sasl_set_plain_validation(
+        ctx: *mut VortexCtx,
+        auth_handler: VortexSaslAuthPlain
+    );
+}
+
+extern "C" {
+    pub fn vortex_sasl_accept_negotiation(
+        ctx: *mut VortexCtx,
+        mech: *const ::std::os::raw::c_char,
     ) -> axl_bool;
 }

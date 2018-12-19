@@ -10,6 +10,39 @@ pub struct Context {
     sasl_initialized: bool,
 }
 
+pub type OnAcceptConnection =
+    fn(conn: conn::Connection) -> bool;
+
+unsafe extern "C" fn sasl_plain_validation(
+    _conn: *mut vtx::VortexConnection,
+    auth_id: *const raw::c_char,
+    authz_id: *const raw::c_char,
+    password: *const raw::c_char
+) -> vtx::axl_bool {
+
+    info!("SASL auth from {:?}/{:?} with password {:?}",
+          CStr::from_ptr(auth_id),
+          CStr::from_ptr(authz_id),
+          CStr::from_ptr(password));
+
+    1
+}
+
+unsafe extern "C" fn call_accept_handler(
+    conn: *mut vtx::VortexConnection,
+    user_data: vtx::axlPointer) -> vtx::axl_bool {
+
+    let handler = user_data as *mut OnAcceptConnection;
+
+    if handler.is_null() {
+        debug!("No OnAcceptConnection handler defined.");
+    } else {
+        (*handler)(conn::Connection::for_raw(conn));
+    }
+
+    1
+}
+
 impl<'a> Context {
     pub fn new() -> Context {
         unsafe {
@@ -157,6 +190,56 @@ impl<'a> Context {
                 info!("TLS layer established.");
                 Ok(tls_connection)
             }
+        }
+    }
+
+    pub fn listen(
+        &mut self,
+        host: &'a str,
+        mut handler: OnAcceptConnection,
+    ) -> Result<conn::Connection, BeepError> {
+
+        // init SASL
+        if !self.sasl_initialized {
+            self.sasl_init()?;
+            self.sasl_initialized = true;
+        }
+
+        // allow SASL
+        unsafe {
+            vtx::vortex_sasl_set_plain_validation(
+                self.ctx,
+                Some(sasl_plain_validation));
+            vtx::vortex_sasl_accept_negotiation(
+                self.ctx,
+                vtx::SASL_PLAIN as *const u8 as *const i8);
+        }
+
+        // create server
+        unsafe {
+            let serv = CString::new(host).unwrap();
+            let port = CString::new("10288").unwrap();
+            vtx::vortex_listener_new(
+                self.ctx,
+                serv.as_ptr(),
+                port.as_ptr(),
+                None, ptr::null_mut());
+        }
+
+        // register accept handler
+        unsafe {
+            vtx::vortex_listener_set_on_connection_accepted(
+                self.ctx,
+                Some(call_accept_handler),
+                &mut handler as *mut _ as *mut raw::c_void);
+        }
+
+        Err(BeepError::ConnectionFailed(String::from("Not yet implemented")))
+    }
+
+    pub fn wait_listener(&self) {
+        unsafe {
+            vtx::vortex_listener_wait(self.ctx);
         }
     }
 
