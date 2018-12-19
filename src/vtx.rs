@@ -100,6 +100,24 @@ pub type VortexOnStartChannel =
                              user_data: axlPointer)
                              -> axl_bool,
     >;
+pub type VortexTlsAcceptQuery =
+    ::std::option::Option<
+        unsafe extern "C" fn(connection: *mut VortexConnection,
+                             serverName: *const ::std::os::raw::c_char)
+                             -> axl_bool,
+    >;
+pub type VortexTlsCertificateFileLocator =
+    ::std::option::Option<
+        unsafe extern "C" fn(connection: *mut VortexConnection,
+                             serverName: *const ::std::os::raw::c_char)
+                             -> *mut ::std::os::raw::c_char,
+    >;
+pub type VortexTlsPrivateKeyFileLocator =
+    ::std::option::Option<
+        unsafe extern "C" fn(connection: *mut VortexConnection,
+                             serverName: *const ::std::os::raw::c_char)
+                             -> *mut ::std::os::raw::c_char,
+    >;
 pub type VortexStatus = u32;
 pub const STATUS_OK: VortexStatus = 2;
 pub type VortexSaslProperties = u32;
@@ -285,6 +303,15 @@ extern "C" {
         status: *mut VortexStatus,
         status_message: *mut *mut raw::c_char,
     ) -> *mut VortexConnection;
+}
+
+extern "C" {
+    pub fn vortex_tls_accept_negotiation(
+        ctx: *mut VortexCtx,
+        accept_handler: VortexTlsAcceptQuery,
+        certificate_handler: VortexTlsCertificateFileLocator,
+        private_key_handler: VortexTlsPrivateKeyFileLocator,
+    ) -> axl_bool;
 }
 
 // SASL

@@ -25,6 +25,10 @@ pub type OnFrameReceived =
        ch: ch::Channel,
        frame: &[u8]);
 
+extern "C" {
+    fn strdup(s: *const raw::c_char) -> *mut raw::c_char;
+}
+
 unsafe extern "C" fn sasl_plain_validation(
     _conn: *mut vtx::VortexConnection,
     auth_id: *const raw::c_char,
@@ -109,6 +113,34 @@ unsafe extern "C" fn call_frame_received_handler(
             ch::Channel::for_raw(channel),
             frame)
     }
+}
+
+unsafe extern "C" fn accept_all_tls(
+    _: *mut vtx::VortexConnection,
+    server_name: *const raw::c_char)
+    -> vtx::axl_bool {
+
+    info!("TLS requested for {:?}", CStr::from_ptr(server_name));
+
+    1
+}
+
+unsafe extern "C" fn cert_file_location(
+    _: *mut vtx::VortexConnection,
+    _: *const raw::c_char)
+    -> *mut raw::c_char {
+
+    let cert_file = CString::new("cert.pem").unwrap();
+    strdup(cert_file.as_ptr())
+}
+
+unsafe extern "C" fn key_file_location(
+    _: *mut vtx::VortexConnection,
+    _: *const raw::c_char)
+    -> *mut raw::c_char {
+
+    let key_file = CString::new("cert.key").unwrap();
+    strdup(key_file.as_ptr())
 }
 
 impl<'a> Context {
@@ -265,6 +297,7 @@ impl<'a> Context {
         &mut self,
         host: &'a str,
         handler: OnAcceptConnection,
+        tls: Option<settings::TlsServer>,
     ) -> Result<(), BeepError> {
 
         // init SASL
@@ -292,6 +325,17 @@ impl<'a> Context {
                 serv.as_ptr(),
                 port.as_ptr(),
                 None, ptr::null_mut());
+        }
+
+        // allow TLS
+        if let Some(_) = tls {
+            unsafe {
+                vtx::vortex_tls_accept_negotiation(
+                    self.ctx,
+                    Some(accept_all_tls),
+                    Some(cert_file_location),
+                    Some(key_file_location));
+            }
         }
 
         // register accept handler

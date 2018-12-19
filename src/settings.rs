@@ -7,6 +7,9 @@ pub struct Tls<'a> {
     pub tls_insecure: bool,
 }
 
+pub struct TlsServer {
+}
+
 pub struct Sasl<'a> {
     pub auth_id: &'a str,
     pub password: &'a str,
@@ -58,5 +61,11 @@ impl <'a> Sasl<'a> {
             auth_id,
             password,
         }
+    }
+}
+
+impl TlsServer {
+    pub fn new() -> TlsServer {
+        TlsServer{}
     }
 }
