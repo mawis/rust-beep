@@ -1,5 +1,6 @@
 #[macro_use]
 extern crate log;
+extern crate libc;
 
 pub mod ch;
 pub mod conn;

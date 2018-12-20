@@ -28,18 +28,18 @@ impl<'a> Connection {
             vtx::vortex_sasl_set_propertie(
                 self.conn,
                 vtx::SASL_AUTH_ID,
-                sasl_auth_id.as_ptr() as *mut i8,
+                sasl_auth_id.as_ptr() as *mut raw::c_char,
                 None,
             );
             vtx::vortex_sasl_set_propertie(
                 self.conn,
                 vtx::SASL_PASSWORD,
-                sasl_password.as_ptr() as *mut i8,
+                sasl_password.as_ptr() as *mut raw::c_char,
                 None,
             );
             vtx::vortex_sasl_start_auth_sync(
                 self.conn,
-                vtx::SASL_PLAIN.as_ptr() as *const i8,
+                vtx::SASL_PLAIN.as_ptr() as *const raw::c_char,
                 &mut status,
                 &mut status_message,
             );
