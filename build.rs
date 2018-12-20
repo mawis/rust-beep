@@ -6,6 +6,7 @@ fn main() -> std::io::Result<()> {
 
     println!("cargo:rustc-link-lib=gsasl");
     println!("cargo:rustc-link-lib=ssl");
+    println!("cargo:rustc-link-lib=crypto");
     println!("cargo:rustc-link-search=native={}", axl.display());
     println!("cargo:rustc-link-lib=static=axl");
     println!("cargo:rustc-link-search=native={}", vortex.display());
