@@ -34,3 +34,5 @@ impl<'a> Channel {
         }
     }
 }
+
+unsafe impl Send for Channel{}
