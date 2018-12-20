@@ -162,19 +162,19 @@ impl<'a> Context {
 
     pub fn connect(
         &mut self,
-        tls: Option<settings::Tls>,
+        tls: &mut Option<settings::Tls>,
         server: &'a str,
     ) -> Result<conn::Connection, BeepError> {
 
         // initialize TLS
         let use_tls = tls.is_some();
-        if let Some(mut tls) = tls {
+        if let Some(ref mut tls) = tls {
             if !self.tls_initialized {
                 self.tls_init()?;
                 self.tls_initialized = true;
             }
 
-            self.set_default_tls_handlers(&mut tls);
+            self.set_default_tls_handlers(tls);
         }
 
         // initialize SASL
