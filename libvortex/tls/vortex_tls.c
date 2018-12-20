@@ -800,8 +800,8 @@ int      vortex_tls_invoke_tls_activation (VortexConnection * connection)
 			vortex_tls_notify_failure_handler (ctx, connection, "syscall error while doing TLS handshake, ssl error (SSL_ERROR_SYSCALL)");
 			return axl_false;
 		default:
-			vortex_log (VORTEX_LEVEL_CRITICAL, "there was an error with the TLS negotiation, ssl error (code:%d) : %s",
-				    ssl_error, ERR_error_string (ssl_error, NULL));
+			vortex_log (VORTEX_LEVEL_CRITICAL, "there was an error with the TLS negotiation, ssl error (code:%d)",
+				    ssl_error);
 			/* now the TLS process have failed, we have to
 			 * restore how is read and written the data */
 			vortex_connection_set_default_io_handler (connection);
