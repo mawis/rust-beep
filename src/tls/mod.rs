@@ -1,3 +1,4 @@
+use libc::size_t;
 use settings;
 use std::ffi::{CStr, CString};
 use std::os::raw;
@@ -14,7 +15,7 @@ mod openssl;
 mod x509v3;
 
 extern "C" {
-    pub fn strlen(__s: *const raw::c_char) -> raw::c_ulong;
+    pub fn strlen(__s: *const raw::c_char) -> size_t;
 }
 
 unsafe fn matching_hostnames(
@@ -118,7 +119,7 @@ unsafe fn tls_check_hostname(
             // sanity checks
             let ia5 = (*entry).d.ia5;
             if ia5.is_null() || (*ia5).length <= 0 || (*ia5).data.is_null() ||
-                strlen((*ia5).data as *mut i8) != (*ia5).length as u64
+                strlen((*ia5).data as *mut raw::c_char) != (*ia5).length as size_t
             {
                 debug!(
                     "Internal sanity check failed. \
@@ -167,9 +168,9 @@ unsafe fn tls_check_hostname(
             } else if cn_length >= 1024 {
                 warn!("Cannot handle CN label ... it's too big.");
             } else {
-                let mut common_name_buffer = [0i8; 1024];
-                let common_name: *mut i8 =
-                    &mut common_name_buffer as *mut [i8; 1024] as *mut i8;
+                let mut common_name_buffer = [0 as raw::c_char; 1024];
+                let common_name: *mut raw::c_char =
+                    &mut common_name_buffer as *mut [raw::c_char; 1024] as *mut raw::c_char;
 
                 if x509v3::X509_NAME_get_text_by_NID(
                     cert_subject_name as *mut x509v3::X509_name_st,
@@ -212,7 +213,7 @@ pub extern "C" fn check_established_tls_connection(
 
         // get cert verification result from OpenSSL
         let ssl_verify_result = openssl::SSL_get_verify_result(ssl);
-        if ssl_verify_result != openssl::X509_V_OK as i64 {
+        if ssl_verify_result != openssl::X509_V_OK as raw::c_long {
             warn!(
                 "Server certificate verification failed: {:?}",
                 CStr::from_ptr(
@@ -234,7 +235,7 @@ pub extern "C" fn check_established_tls_connection(
         }
         let peer_certificate_subject_name =
             openssl::X509_get_subject_name(peer_certificate);
-        let mut buffer = [0i8; 1024];
+        let mut buffer = [0 as raw::c_char; 1024];
         openssl::X509_NAME_oneline(
             peer_certificate_subject_name,
             buffer.as_mut_ptr(),

@@ -132,7 +132,7 @@ impl<'a> Context {
             let mut vortex_status_message: *mut raw::c_char = ptr::null_mut();
             let tls_connection = vtx::vortex_tls_start_negotiation_sync(
                 connection,
-                server.as_ptr() as *const i8,
+                server.as_ptr() as *const raw::c_char,
                 &mut vortex_status,
                 &mut vortex_status_message,
             );
