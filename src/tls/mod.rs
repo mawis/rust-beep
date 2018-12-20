@@ -279,8 +279,6 @@ pub extern "C" fn tls_create_ssl_context(
 
     let settings: *mut settings::Tls = user_data as *mut settings::Tls;
 
-    info!("SSL context creation.");
-
     // sanity check
     if settings.is_null() {
         warn!("No settings were there ...");
@@ -294,20 +292,17 @@ pub extern "C" fn tls_create_ssl_context(
         let capath = (*settings).capath.unwrap_or("");
         let cacert = (*settings).cacert.unwrap_or("");
 
-        info!("CApath: {:?} / CAcert: {:?}", capath, cacert);
+        debug!("CApath: {:?} / CAcert: {:?}", capath, cacert);
 
         if !capath.is_empty() || !cacert.is_empty() {
-            info!("Setting them!");
             let path = CString::new(capath).unwrap();
             let cert = CString::new(cacert).unwrap();
             let path = if capath.is_empty() {
-                info!("path ... null");
                 ptr::null_mut()
             } else {
                 path.as_ptr()
             };
             let cert = if cacert.is_empty() {
-                info!("cert ... null");
                 ptr::null_mut()
             } else {
                 cert.as_ptr()
@@ -323,11 +318,8 @@ pub extern "C" fn tls_create_ssl_context(
                 );
                 openssl::SSL_CTX_free(ssl_ctx);
                 return ptr::null_mut();
-            } else {
-                info!("Locations set");
             }
         } else {
-            info!("Using default paths ...");
             if openssl::SSL_CTX_set_default_verify_paths(ssl_ctx) == 0 {
                 error!("Could not set default verify paths on libssl");
                 openssl::SSL_CTX_free(ssl_ctx);
@@ -335,7 +327,6 @@ pub extern "C" fn tls_create_ssl_context(
             }
         }
 
-        info!("Returning Context {:p}", ssl_ctx);
         return ssl_ctx as *mut raw::c_void;
     }
 }
