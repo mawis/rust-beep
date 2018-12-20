@@ -259,6 +259,14 @@ extern "C" {
     ) -> axl_bool;
 }
 
+extern "C" {
+    pub fn vortex_channel_set_received_handler(
+        channel: *mut VortexChannel,
+        received: VortexOnFrameReceived,
+        user_data: axlPointer,
+    );
+}
+
 // Frames
 extern "C" {
     pub fn vortex_frame_get_payload_size(frame: *mut VortexFrame) -> raw::c_int;

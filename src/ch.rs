@@ -33,6 +33,18 @@ impl<'a> Channel {
             }
         }
     }
+
+    pub fn set_received_handler(
+        &self,
+        on_frame_received: ctx::OnFrameReceived) {
+
+        unsafe {
+            vtx::vortex_channel_set_received_handler(
+                self.channel,
+                Some(ctx::call_frame_received_handler),
+                on_frame_received as *mut raw::c_void);
+        }
+    }
 }
 
 unsafe impl Send for Channel{}

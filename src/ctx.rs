@@ -94,7 +94,7 @@ unsafe extern "C" fn call_close_channel_handler(
     }
 }
 
-unsafe extern "C" fn call_frame_received_handler(
+pub unsafe extern "C" fn call_frame_received_handler(
     channel: *mut vtx::VortexChannel,
     conn: *mut vtx::VortexConnection,
     frame: *mut vtx::VortexFrame,
