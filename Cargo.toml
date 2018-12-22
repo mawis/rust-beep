@@ -1,10 +1,13 @@
 [package]
 name = "beep-proto"
-version = "0.0.1"
+version = "0.0.2"
 authors = ["Matthias Wimmer <m@tthias.eu>"]
 homepage = "https://github.com/mawis"
 license = "LGPL-2.1-only"
 description = "Limited support for the BEEP protocol (RFC 3080/RFC 3081)"
+repository = "https://github.com/mawis/rust-beep"
+readme = "README.md"
+keywords = [ "BEEP", "RFC3080" ]
 
 [dependencies]
 log = "0.4.6"
