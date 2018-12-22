@@ -162,7 +162,7 @@ impl<'a> Context {
 
     pub fn connect(
         &mut self,
-        tls: &mut Option<settings::Tls>,
+        tls: &'a mut Option<settings::Tls>,
         server: &'a str,
     ) -> Result<conn::Connection, BeepError> {
 
