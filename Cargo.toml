@@ -1,5 +1,5 @@
 [package]
-name = "rust-beep"
+name = "beep-proto"
 version = "0.0.1"
 authors = ["Matthias Wimmer <m@tthias.eu>"]
 homepage = "https://github.com/mawis"
