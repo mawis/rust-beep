@@ -13504,6 +13504,7 @@ pub struct max_align_t {
     pub __bindgen_padding_0: u64,
     pub __clang_max_align_nonce2: f64,
 }
+#[ignore]
 #[test]
 fn bindgen_test_layout_max_align_t() {
     assert_eq!(

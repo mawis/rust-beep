@@ -327,3 +327,51 @@ pub extern "C" fn tls_create_ssl_context(
         return ssl_ctx as *mut raw::c_void;
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn _matching_hostnames(
+        hostname: &str,
+        certname: &str,
+        wildcard_okay: bool) -> bool {
+        
+        let host = CString::new(hostname).expect("Testing with invalid hostname");
+        let cert = CString::new(certname).expect("Testing with invalid certname");
+
+        unsafe {
+            matching_hostnames(host.as_ptr(), cert.as_ptr(), wildcard_okay)
+        }
+    }
+
+    #[test]
+    fn exact_matching_hostname_matches() {
+        assert!(_matching_hostnames("example.com", "example.com", false));
+    }
+
+    #[test]
+    fn exact_matching_hostname_matches_on_wildcard_check() {
+        assert!(_matching_hostnames("example.com", "example.com", true));
+    }
+
+    #[test]
+    fn differing_hostnames_do_not_match() {
+        assert!(!_matching_hostnames("example.com", "example.net", false));
+    }
+
+    #[test]
+    fn differing_hostnames_do_not_match_on_wildcard_check() {
+        assert!(!_matching_hostnames("example.com", "example.net", true));
+    }
+
+    #[test]
+    fn matches_with_wildcard_cert_work() {
+        assert!(_matching_hostnames("host.example.net", "*.example.net", true));
+    }
+
+    #[test]
+    fn wildcard_matches_only_when_activeted() {
+        assert!(!_matching_hostnames("host.example.net", "*.example.net", false));
+    }
+}
