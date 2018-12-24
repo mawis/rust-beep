@@ -132,6 +132,19 @@ unsafe fn tls_check_hostname(
                     "Internal sanity check failed. \
                             Expectations on subjectAltName entry were wrong."
                 );
+                if ia5.is_null() {
+                    debug!("ia5 is null");
+                } else {
+                    debug!("length: {}", (*ia5).length);
+                    if (*ia5).data.is_null() {
+                        debug!("data is null");
+                    } else {
+                        debug!("length is: {} / {}",
+                               strlen((*ia5).data as *mut raw::c_char),
+                               (*ia5).length as size_t);
+                        debug!("dNSName: {:?}", CStr::from_ptr((*ia5).data as *mut raw::c_char));
+                    }
+                }
                 return;
             }
 
