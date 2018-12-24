@@ -40,12 +40,16 @@ unsafe fn matching_hostnames(
     let hostname = hostname.unwrap();
     let certname = certname.unwrap();
 
+    debug!("Checking hostname {:?} against {:?} (wildcards: {})",
+        hostname, certname, wildcard_okay);
+
     // wildcard in certificate?
     if wildcard_okay && certname.contains("*") {
         // we hace to use wildcard aware checking
 
         // certname has to start with "*."
         if !certname.starts_with("*.") {
+            info!("Certificate has a wildcard, but not at the beginning.");
             return false;
         }
 
@@ -53,16 +57,19 @@ unsafe fn matching_hostnames(
         let hostname_domain =
             hostname.split(".").skip(1).collect::<Vec<_>>().join(".");
         if hostname_domain.is_empty() {
+            info!("Too few labels in the hostname.");
             return false;
         }
 
         // there must be something behind the wildcard
         let certname_domain: String = certname.chars().skip(2).collect();
         if certname_domain.is_empty() {
+            info!("Wildcard certificate name invalid.");
             return false;
         }
 
         // compare domain part
+        debug!("Comparing {} with {}", certname_domain, hostname_domain);
         return certname_domain.to_lowercase() == hostname_domain.to_lowercase();
     } else {
         // return true if equals ignore case
