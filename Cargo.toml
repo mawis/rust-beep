@@ -10,7 +10,7 @@ readme = "README.md"
 keywords = [ "BEEP", "RFC3080" ]
 
 [dependencies]
-foreign-types-shared = "*"
+foreign-types-shared = "0.1.1"
 log = "0.4.6"
 libc = "0.2.45"
 openssl = "0.10.16"
