@@ -74,25 +74,17 @@ unsafe fn matching_hostnames(
 }
 
 unsafe fn tls_check_hostname(
-    cert: *mut openssl::X509,
+    cert: &X509Ref,
     hostname: *const raw::c_char,
     wildcard_okay: bool,
 ) -> bool {
     let mut dns_name_found = false;
 
     // sanity check
-    if cert.is_null() || hostname.is_null() {
-        warn!(
-            "Cannot check hostname, parameters are missing \
-               ({:p}, {:p})",
-            cert,
-            hostname
-        );
+    if hostname.is_null() {
+        warn!("Cannot check hostname, hostname is null");
         return false;
     }
-
-    let cert = X509Ref::from_ptr(
-        cert as *mut <X509Ref as ForeignTypeRef>::CType);
 
     // search subjectAltName/dNSName extension
     if let Some(subject_alt_names) = cert.subject_alt_names() {
@@ -139,6 +131,16 @@ unsafe fn tls_check_hostname(
     false
 }
 
+fn subject(cert: &X509Ref) -> String {
+    let subject_name = cert.subject_name();
+    let entries = subject_name.entries();
+
+    entries.flat_map(|entry| entry.data().as_utf8())
+        .map(|s| s.to_string())
+        .collect::<Vec<String>>()
+        .join("/")
+}
+
 pub extern "C" fn check_established_tls_connection(
     _connection: *mut vtx::VortexConnection,
     user_data: vtx::axlPointer,
@@ -171,27 +173,20 @@ pub extern "C" fn check_established_tls_connection(
 
         // get peer certificate
         let peer_certificate = openssl::SSL_get_peer_certificate(ssl);
+
         if peer_certificate.is_null() {
             warn!("Could not get peer certificate.");
             return 0;
         }
-        let peer_certificate_subject_name =
-            openssl::X509_get_subject_name(peer_certificate);
-        let mut buffer = [0 as raw::c_char; 1024];
-        openssl::X509_NAME_oneline(
-            peer_certificate_subject_name,
-            buffer.as_mut_ptr(),
-            buffer.len() as i32,
-        );
-        info!(
-            "Server certificate: {:?}",
-            CStr::from_ptr(buffer.as_ptr() as *const raw::c_char)
-        );
+        let cert = X509Ref::from_ptr(
+            peer_certificate as *mut <X509Ref as ForeignTypeRef>::CType);
+
+        info!("Server certificate: {:?}", subject(cert));
 
         // verify the hostname in the certificate
         let server = CString::new((*settings).server).unwrap();
         if !tls_check_hostname(
-            peer_certificate,
+            cert,
             server.as_ptr(),
             (*settings).tls_allow_wildcard,
         )
