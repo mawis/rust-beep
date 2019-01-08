@@ -1,3 +1,4 @@
+use foreign_types_shared::ForeignTypeRef;
 use libc::size_t;
 use settings;
 use std::ffi::{CStr, CString};
@@ -5,6 +6,8 @@ use std::os::raw;
 use std::ptr;
 use std::string::String;
 use std::vec::Vec;
+use openssl::nid::Nid;
+use openssl::x509::X509Ref;
 use vtx;
 
 #[allow(non_camel_case_types, non_upper_case_globals, dead_code,
@@ -12,7 +15,6 @@ use vtx;
 mod openssl;
 #[allow(non_camel_case_types, non_upper_case_globals, dead_code,
         non_snake_case)]
-mod x509v3;
 
 extern "C" {
     pub fn strlen(__s: *const raw::c_char) -> size_t;
@@ -20,25 +22,19 @@ extern "C" {
 
 unsafe fn matching_hostnames(
     hostname: *const raw::c_char,
-    certname: *const raw::c_char,
+    certname: &str,
     wildcard_okay: bool,
 ) -> bool {
 
     let hostname = CStr::from_ptr(hostname).to_str();
-    let certname = CStr::from_ptr(certname).to_str();
 
     // sanity check
     if let Err(msg) = hostname {
         info!("no match, hostname: {}", msg);
         return false;
     }
-    if let Err(msg) = certname {
-        info!("no match, certname: {}", msg);
-        return false;
-    }
 
     let hostname = hostname.unwrap();
-    let certname = certname.unwrap();
 
     debug!("Checking hostname {:?} against {:?} (wildcards: {})",
         hostname, certname, wildcard_okay);
@@ -83,7 +79,6 @@ unsafe fn tls_check_hostname(
     wildcard_okay: bool,
 ) -> bool {
     let mut dns_name_found = false;
-    let mut hostname_found = false;
 
     // sanity check
     if cert.is_null() || hostname.is_null() {
@@ -96,112 +91,52 @@ unsafe fn tls_check_hostname(
         return false;
     }
 
+    let cert = X509Ref::from_ptr(
+        cert as *mut <X509Ref as ForeignTypeRef>::CType);
+
     // search subjectAltName/dNSName extension
-    let subject_alt_name = openssl::X509_get_ext_d2i(
-        cert,
-        openssl::NID_subject_alt_name as i32,
-        ptr::null_mut(),
-        ptr::null_mut(),
-    ) as *const openssl::stack_st;
-    if !subject_alt_name.is_null() {
-        let number_of_subject_alt_names =
-            openssl::OPENSSL_sk_num(subject_alt_name);
-        (0..number_of_subject_alt_names).for_each(|c| {
-            let entry = openssl::OPENSSL_sk_value(subject_alt_name, c) as
-                *mut x509v3::GENERAL_NAME_st;
+    if let Some(subject_alt_names) = cert.subject_alt_names() {
+        for subject_alt_name in subject_alt_names {
+            if let Some(dns_name) = subject_alt_name.dnsname() {
+                // we found a dNSName
+                dns_name_found = true;
 
-            // sanity check
-            if entry.is_null() {
-                return;
-            }
+                debug!("dNSName: {}", dns_name);
 
-            // we only care about dNSName
-            if (*entry).type_ != x509v3::GEN_DNS as i32 {
-                return;
-            }
-
-            // we found a dNSName
-            dns_name_found = true;
-
-            // sanity checks
-            let ia5 = (*entry).d.ia5;
-            if ia5.is_null() || (*ia5).length <= 0 || (*ia5).data.is_null() ||
-                strlen((*ia5).data as *mut raw::c_char) != (*ia5).length as size_t
-            {
-                debug!(
-                    "Internal sanity check failed. \
-                            Expectations on subjectAltName entry were wrong."
-                );
-                return;
-            }
-
-            // special compare because of wildcard checking
-            if matching_hostnames(
-                hostname,
-                (*ia5).data as *mut raw::c_char,
-                wildcard_okay,
-            )
-            {
-                hostname_found = true;
-                return;
-            }
-        });
-    }
-
-    // search for hostname in commonName
-    // (only if there were no subjectAltName/dNSName extensions
-    // - see RFC 2818, sect 3.1)
-    if !hostname_found && !dns_name_found {
-        let cert_subject_name = openssl::X509_get_subject_name(cert);
-
-        if cert_subject_name.is_null() {
-            info!(
-                "DN check requested, but could not get subject from \
-                   certificate."
-            );
-        } else {
-            let cn_length = openssl::X509_NAME_get_text_by_NID(
-                cert_subject_name,
-                openssl::NID_commonName as i32,
-                ptr::null_mut(),
-                0,
-            );
-
-            if cn_length == -1 {
-                info!(
-                    "Certificate does not contain a CN label in \
-                       the subject."
-                );
-            } else if cn_length >= 1024 {
-                warn!("Cannot handle CN label ... it's too big.");
-            } else {
-                let mut common_name_buffer = [0 as raw::c_char; 1024];
-                let common_name: *mut raw::c_char =
-                    &mut common_name_buffer as *mut [raw::c_char; 1024] as *mut raw::c_char;
-
-                if x509v3::X509_NAME_get_text_by_NID(
-                    cert_subject_name as *mut x509v3::X509_name_st,
-                    openssl::NID_commonName as i32,
-                    common_name,
-                    1024,
-                ) == -1
-                {
-                    warn!("Problem reading commonName");
-                } else {
-                    if matching_hostnames(
-                        hostname,
-                        common_name,
-                        wildcard_okay,
-                    )
-                    {
-                        hostname_found = true;
-                    }
+                // special compare because of wildcard checking
+                if matching_hostnames(
+                    hostname,
+                    dns_name,
+                    wildcard_okay) {
+                    debug!("Certificate accepted by subjectAltName/dNSName");
+                    return true;
                 }
             }
         }
     }
 
-    hostname_found
+    // search for hostname in commonName
+    // (only if there were no subjectAltName/dNSName extensions
+    // - see RFC 2818, sect 3.1)
+    if !dns_name_found {
+        let cert_subject_name = cert.subject_name();
+        let common_names = cert_subject_name.entries_by_nid(Nid::COMMONNAME);
+
+        for common_name in common_names {
+            let common_name = common_name.data();
+            if let Ok(common_name) = common_name.as_utf8() {
+                if matching_hostnames(
+                    hostname,
+                    &common_name,
+                    wildcard_okay) {
+                    debug!("Certificate accepted by commonName");
+                    return true;
+                }
+            }
+        }
+    }
+
+    false
 }
 
 pub extern "C" fn check_established_tls_connection(

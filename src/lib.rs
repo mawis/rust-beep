@@ -1,6 +1,8 @@
+extern crate foreign_types_shared;
 #[macro_use]
 extern crate log;
 extern crate libc;
+extern crate openssl;
 
 pub mod ch;
 pub mod conn;
