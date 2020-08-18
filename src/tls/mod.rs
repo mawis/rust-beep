@@ -273,12 +273,14 @@ mod tests {
         hostname: &str,
         certname: &str,
         wildcard_okay: bool) -> bool {
-        
+
         let host = CString::new(hostname).expect("Testing with invalid hostname");
         let cert = CString::new(certname).expect("Testing with invalid certname");
 
         unsafe {
-            matching_hostnames(host.as_ptr(), cert.as_ptr(), wildcard_okay)
+            matching_hostnames(host.as_ptr(),
+            CStr::from_ptr(cert.as_ptr()).to_str().unwrap(),
+            wildcard_okay)
         }
     }
 
